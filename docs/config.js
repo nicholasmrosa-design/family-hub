@@ -12,7 +12,7 @@ window.FAMILY_HUB_CONFIG = {
   },
 
   // Step 5 (optional, for reminders + Apple Calendar): your Cloudflare worker URL, e.g. https://family-hub.yourname.workers.dev
-  workerUrl: 'https://family-hub.nicholas-m-rosa.workers.dev/',
+  workerUrl: 'https://family-hub.nicholas-m-rosa.workers.dev',
   // Step 5: the "VAPID_PUBLIC_KEY" value shown by your worker's /setup page
   vapidPublicKey: 'BJvsYhm4Zhz-huIthbx9Zxm_m8y4gW_z7CnJ4x02jKmgZFfe3nAfugG-fbI1oMAjAGcXMlQRWXtplqSqQ00v0HA',
 };
