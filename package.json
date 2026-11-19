@@ -1,0 +1,23 @@
+{
+  "name": "family-hub",
+  "version": "1.0.0",
+  "description": "Family Hub: shared family calendar, scheduler, meals and lists (PWA)",
+  "main": "index.js",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test tests/logic.test.mjs tests/worker.test.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "esbuild": "^0.24.2",
+    "http_ece": "^1.2.1"
+  },
+  "dependencies": {
+    "firebase": "^13.4.0",
+    "lucide-preact": "^1.76.0",
+    "preact": "^11.2.0"
+  },
+  "type": "module"
+}

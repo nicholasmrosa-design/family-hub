@@ -1,0 +1,113 @@
+rules_version = '2';
+// Family Hub security rules.
+// - A family's data lives at /families/{fid}. The fid is a hash of the family passcode,
+//   so only people who know the passcode can find it (listing families is not allowed).
+// - Each phone signs in anonymously and registers a "session" saying who it is.
+//   A parent session requires the parent PIN; kid sessions can add things but not edit or delete.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function famPath(fid) { return /databases/$(database)/documents/families/$(fid); }
+    function sessionPath(fid) { return /databases/$(database)/documents/families/$(fid)/sessions/$(request.auth.uid); }
+    function isMember(fid) { return signedIn() && exists(sessionPath(fid)); }
+    function isParent(fid) { return isMember(fid) && get(sessionPath(fid)).data.role == 'parent'; }
+    function onlyChanges(keys) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
+
+    match /families/{fid} {
+      allow get: if signedIn();
+      allow list: if false;
+      // Creating a family: done in one batch together with the PIN doc and the creator's parent session.
+      allow create: if signedIn()
+        && existsAfter(/databases/$(database)/documents/families/$(fid)/private/parent)
+        && getAfter(sessionPath(fid)).data.role == 'parent';
+      allow update: if isParent(fid);
+      allow delete: if false;
+
+      match /private/parent {
+        allow read: if false;
+        allow create: if signedIn() && !exists(famPath(fid)) && request.resource.data.keys().hasOnly(['pinHash']);
+        allow update: if isParent(fid) && request.resource.data.keys().hasOnly(['pinHash']);
+        allow delete: if false;
+      }
+
+      match /sessions/{uid} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow delete: if signedIn() && request.auth.uid == uid;
+        allow create, update: if signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['role', 'memberId', 'pinHash', 'at'])
+          && (existsAfter(famPath(fid)) || exists(famPath(fid)))
+          && (
+            request.resource.data.role == 'kid'
+            || (request.resource.data.role == 'parent'
+                && request.resource.data.pinHash == getAfter(/databases/$(database)/documents/families/$(fid)/private/parent).data.pinHash)
+          );
+      }
+
+      // Calendar events: everyone can read and add; only parents can change or delete.
+      match /events/{id} {
+        allow read, create: if isMember(fid);
+        allow update, delete: if isParent(fid);
+      }
+      match /recipes/{id} {
+        allow read, create: if isMember(fid);
+        allow update, delete: if isParent(fid);
+      }
+      // Meal plan slots: kids can fill an empty slot, parents can change anything.
+      match /mealPlan/{id} {
+        allow read, create: if isMember(fid);
+        allow update, delete: if isParent(fid);
+      }
+      // Grocery list and to-dos: kids can add and check things off.
+      match /grocery/{id} {
+        allow read, create: if isMember(fid);
+        allow update: if isParent(fid) || (isMember(fid) && onlyChanges(['done', 'doneBy', 'doneAt', 'updatedAt']));
+        allow delete: if isParent(fid);
+      }
+      match /chores/{id} {
+        allow read, create: if isMember(fid);
+        allow update: if isParent(fid) || (isMember(fid) && onlyChanges(['done', 'doneBy', 'doneAt', 'updatedAt']));
+        allow delete: if isParent(fid);
+      }
+      // Chores: everyone can read and add; only parents can change or delete the chore itself.
+      match /routines/{id} {
+        allow read, create: if isMember(fid);
+        allow update, delete: if isParent(fid);
+      }
+      // Check-offs for chores and planned events: anyone can check off;
+      // you can undo your own, parents can undo anyone's.
+      // (Anyone can update a chore's status, e.g. finish a chore someone else moved.)
+      match /routineDone/{id} {
+        allow read: if isMember(fid);
+        allow create: if isMember(fid) && request.resource.data.uid == request.auth.uid;
+        allow update: if isMember(fid) && request.resource.data.uid == request.auth.uid;
+        allow delete: if isParent(fid) || (isMember(fid) && resource.data.uid == request.auth.uid);
+      }
+      match /checkins/{id} {
+        allow read: if isMember(fid);
+        allow create: if isMember(fid) && request.resource.data.uid == request.auth.uid;
+        allow update: if isMember(fid) && request.resource.data.uid == request.auth.uid && (isParent(fid) || resource.data.uid == request.auth.uid);
+        allow delete: if isParent(fid) || (isMember(fid) && resource.data.uid == request.auth.uid);
+      }
+      // Reminder subscriptions: each phone manages its own.
+      match /push/{id} {
+        allow read: if isParent(fid);
+        allow create: if isMember(fid) && request.resource.data.uid == request.auth.uid;
+        allow update: if isMember(fid) && request.resource.data.uid == request.auth.uid;
+        allow delete: if isMember(fid) && (resource.data.uid == request.auth.uid || isParent(fid));
+      }
+    }
+
+    // Apple Calendar feed tokens: only readable by the worker (which uses admin access).
+    match /feeds/{token} {
+      allow read: if false;
+      allow create: if signedIn()
+        && get(/databases/$(database)/documents/families/$(request.resource.data.fid)/sessions/$(request.auth.uid)).data.role == 'parent';
+      allow update, delete: if false;
+    }
+
+    match /system/{doc} {
+      allow read, write: if false;
+    }
+  }
+}
