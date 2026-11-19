@@ -1,5 +1,5 @@
 // Family Hub service worker: offline app shell + reminder notifications.
-const VERSION = 'mwo4550r';
+const VERSION = 'mwo7bir4';
 const CACHE = 'familyhub-' + VERSION;
 const SHELL = ['./', 'index.html', 'app.js', 'app.css', 'config.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/apple-touch-icon.png'];
 
@@ -15,11 +15,13 @@ self.addEventListener('activate', (e) => {
 });
 
 // Network first for our own files (so updates show up), falling back to cache when offline.
+// 'no-cache' makes the phone check with GitHub every time instead of reusing a stale copy
+// (GitHub Pages tells browsers to keep files for 10 minutes), so config.js edits apply on the next open.
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-cache' })
       .then((res) => {
         if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
         return res;
