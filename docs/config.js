@@ -3,12 +3,12 @@
 window.FAMILY_HUB_CONFIG = {
   // Step 2: from Firebase console › Project settings › Your apps › SDK setup and configuration › Config
   firebase: {
-    apiKey: 'PASTE_API_KEY',
-    authDomain: '',
-    projectId: '',
-    storageBucket: '',
-    messagingSenderId: '',
-    appId: '',
+    apiKey: 'AIzaSyAwfbLiIwIQ8HhVCyDT4nNowXAKdUpd2CU',
+    authDomain: 'family-hub-58860.firebaseapp.com',
+    projectId: 'family-hub-58860',
+    storageBucket: 'family-hub-58860.firebasestorage.app',
+    messagingSenderId: '296336270684',
+    appId: '1:296336270684:web:1768cfd0ca93e5390fcd99',
   },
 
   // Step 5 (optional, for reminders + Apple Calendar): your Cloudflare worker URL, e.g. https://family-hub.yourname.workers.dev
